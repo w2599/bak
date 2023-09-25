@@ -1,0 +1,43 @@
+name: update
+on: 
+  push:
+  schedule:
+    - cron: '0 3 */2 * *'
+jobs:
+  run_bash:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+        
+      - name: NeedToSync
+        run: |
+          latestTag=$(curl https://apt.procurs.us/bootstraps/big_sur/bootstrap-darwin-amd64.tar.zst.asc)
+          thisTag=$(curl https://raw.githubusercontent.com/w2599/bak/main/bootstrap-darwin-amd64.tar.zst.asc)
+          
+          if (( ${#latestTag} > 10 && ${#thisTag} > 10 )); then
+            if [[ $latestTag != $thisTag ]]; then
+                echo "NeedToSync=true" >> $GITHUB_ENV
+            fi
+          fi
+
+        
+      - name: Get
+        if: ${{ env.NeedToSync }}
+        run: |
+          curl https://apt.procurs.us/bootstraps/big_sur/bootstrap-darwin-amd64.tar.zst.asc -o bootstrap-darwin-amd64.tar.zst.asc
+          curl https://apt.procurs.us/bootstraps/big_sur/bootstrap-darwin-amd64.tar.zst -o bootstrap-darwin-amd64.tar.zst
+         
+      - name: Commit
+        if: ${{ env.NeedToSync }}
+        run: |
+          git config --global user.email 114452622+w2599@users.noreply.github.com
+          git config --global user.name w2599
+          git add .
+          git commit -m"update"
+        
+      - name: Push
+        if: ${{ env.NeedToSync }}
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.ACCESS_TOKEN }}
